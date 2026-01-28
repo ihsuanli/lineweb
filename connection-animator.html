@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>連接線動畫 - 三款光譜流動效果</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+            padding: 40px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .line-section {
+            margin-bottom: 80px;
+            position: relative;
+        }
+
+        .line-title {
+            color: #fff;
+            font-size: 18px;
+            margin-bottom: 20px;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+
+        .line-info {
+            color: #888;
+            font-size: 12px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        svg, canvas {
+            display: block;
+            margin: 0 auto;
+            overflow: visible;
+        }
+
+        /* 節點樣式 */
+        .node {
+            fill: #ff85c0;
+            filter: drop-shadow(0 0 8px #ff85c0);
+        }
+
+        .node-label {
+            fill: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            text-anchor: middle;
+        }
+
+        /* SVG 濾鏡定義 - 霓虹發光效果 */
+        .glow-filter {
+            filter: url(#glow);
+        }
+
+        /* 線條 A-B：優化版 - 細緻化、漸層、流光 */
+        .line-ab {
+            stroke: url(#gradient-ab-flow);
+            stroke-width: 2;
+            fill: none;
+            stroke-linecap: round;
+            opacity: 0.6;
+            stroke-dasharray: 30 70;
+            animation: flow-ab 2.5s linear infinite;
+        }
+        
+        .line-ab-glow {
+            stroke: url(#gradient-ab-glow);
+            stroke-width: 4;
+            fill: none;
+            stroke-linecap: round;
+            opacity: 0.3;
+            filter: blur(4px);
+        }
+        
+        .flow-particle {
+            fill: url(#particle-gradient);
+            filter: drop-shadow(0 0 6px #60a5fa);
+            animation: particle-flow 2.5s linear infinite;
+        }
+
+        @keyframes flow-ab {
+            0% {
+                stroke-dashoffset: 100;
+                opacity: 0.4;
+            }
+            50% {
+                opacity: 0.8;
+            }
+            100% {
+                stroke-dashoffset: 0;
+                opacity: 0.4;
+            }
+        }
+        
+        @keyframes particle-flow {
+            0% {
+                offset-distance: 0%;
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                offset-distance: 100%;
+                opacity: 0;
+            }
+        }
+
+        /* 線條 C-D：快速密集 - 添加方向性漸層 */
+        .line-cd {
+            stroke: url(#gradient-cd-flow);
+            stroke-width: 2.5;
+            fill: none;
+            stroke-linecap: round;
+            opacity: 0.7;
+            stroke-dasharray: 60 30;
+            animation: flow-cd 1.5s linear infinite;
+        }
+        
+        .line-cd-glow {
+            stroke: url(#gradient-cd-glow);
+            stroke-width: 5;
+            fill: none;
+            stroke-linecap: round;
+            opacity: 0.25;
+            filter: blur(6px);
+        }
+
+        @keyframes flow-cd {
+            0% {
+                stroke-dashoffset: 90;
+                opacity: 0.5;
+            }
+            50% {
+                opacity: 0.9;
+            }
+            100% {
+                stroke-dashoffset: 0;
+                opacity: 0.5;
+            }
+        }
+
+        /* 線條 E-F：藍白交錯流動效果 */
+        .line-ef {
+            stroke: url(#gradient-ef-repeating);
+            stroke-width: 12;
+            fill: none;
+            stroke-linecap: round;
+            opacity: 1;
+        }
+        
+        .line-ef-glow {
+            stroke: #3b82f6;
+            stroke-width: 16;
+            fill: none;
+            stroke-linecap: round;
+            opacity: 0.25;
+            filter: blur(12px);
+        }
+
+        /* 背景線條 */
+        .bg-line {
+            stroke: #ff85c0;
+            stroke-width: 2;
+            fill: none;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 線條 A-B：基礎流動 -->
+        <div class="line-section">
+            <div class="line-title">線條 A-B - Canvas 版本：流動漸層</div>
+            <div class="line-info">速度：中等 (0.7) | 漸層長度：130px | 樣式：細線 + 動態漸層位移 | 路徑：直線</div>
+            <canvas id="canvas-ab" width="800" height="100"></canvas>
+        </div>
+
+        <!-- 線條 C-D：快速密集 -->
+        <div class="line-section">
+            <div class="line-title">線條 C-D - Canvas 版本：流動漸層</div>
+            <div class="line-info">速度：快速 (1.2) | 漸層長度：80px | 樣式：細線 + 密集藍白交錯 | 路徑：直線</div>
+            <canvas id="canvas-cd" width="800" height="100"></canvas>
+
+        </div>
+
+        <!-- 線條 E-F：緩慢分散 -->
+        <div class="line-section">
+            <div class="line-title">線條 E-F - Canvas 版本：流動漸層</div>
+            <div class="line-info">速度：緩慢 (0.3) | 漸層長度：200px | 樣式：細線 + 平滑優雅過渡 | 路徑：直線</div>
+            <canvas id="canvas-ef" width="800" height="100"></canvas>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Canvas 繪製函數：動態流動漸層連線
+         * 從 source 到 target 呈現 #0047AB 到 white 的漸層過渡
+         * 使用 requestAnimationFrame 創造平滑的位移動畫
+         */
+        function drawFlowingConnection(canvasId, sourceX, sourceY, targetX, targetY, options = {}) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            
+            // 動畫參數
+            let offset = 0;
+            const lineWidth = options.lineWidth || 4;
+            const glowWidth = options.glowWidth || 8;
+            const speed = options.speed || 0.5;
+            const gradientRepeatLength = options.gradientLength || 150;
+            const pathType = options.pathType || 'straight';
+            const labels = options.label || ['', ''];
+            
+            // 計算路徑點
+            const controlX = (sourceX + targetX) / 2;
+            const controlY = pathType === 'bezier' ? sourceY - 20 : sourceY;
+            
+            function animate() {
+                // 清除畫布
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // 繪製背景線（粉紅色）
+                ctx.strokeStyle = '#ff85c0';
+                ctx.lineWidth = 2;
+                ctx.globalAlpha = 0.3;
+                ctx.beginPath();
+                ctx.moveTo(sourceX, sourceY);
+                if (pathType === 'bezier') {
+                    ctx.quadraticCurveTo(controlX, controlY, targetX, targetY);
+                } else {
+                    ctx.lineTo(targetX, targetY);
+                }
+                ctx.stroke();
+                
+                // 繪製發光層
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = glowWidth;
+                ctx.globalAlpha = 0.15;
+                ctx.filter = 'blur(12px)';
+                ctx.beginPath();
+                ctx.moveTo(sourceX, sourceY);
+                if (pathType === 'bezier') {
+                    ctx.quadraticCurveTo(controlX, controlY, targetX, targetY);
+                } else {
+                    ctx.lineTo(targetX, targetY);
+                }
+                ctx.stroke();
+                ctx.filter = 'none';
+                
+                // 創建流動漸層
+                const lineLength = Math.sqrt(Math.pow(targetX - sourceX, 2) + Math.pow(targetY - sourceY, 2));
+                const angle = Math.atan2(targetY - sourceY, targetX - sourceX);
+                
+                // 創建多段漸層以實現重複效果
+                ctx.save();
+                ctx.translate(sourceX, sourceY);
+                ctx.rotate(angle);
+                
+                // 使用漸層
+                const gradient = ctx.createLinearGradient(-offset % gradientRepeatLength, 0, lineLength, 0);
+                
+                // 計算需要多少個漸層循環
+                const cycles = Math.ceil((lineLength + gradientRepeatLength) / gradientRepeatLength);
+                
+                for (let i = -1; i < cycles; i++) {
+                    const basePos = (i * gradientRepeatLength - offset % gradientRepeatLength) / lineLength;
+                    const cycleLength = gradientRepeatLength / lineLength;
+                    
+                    if (basePos < 1 && basePos + cycleLength > 0) {
+                        // 創建循環漸層：深藍 → 白 → 深藍，確保無縫銜接
+                        gradient.addColorStop(Math.max(0, basePos), '#0047AB');
+                        gradient.addColorStop(Math.max(0, Math.min(1, basePos + cycleLength * 0.1)), '#1a5fc9');
+                        gradient.addColorStop(Math.max(0, Math.min(1, basePos + cycleLength * 0.2)), '#3b82f6');
+                        gradient.addColorStop(Math.max(0, Math.min(1, basePos + cycleLength * 0.3)), '#60a5fa');
+                        gradient.addColorStop(Math.max(0, Math.min(1, basePos + cycleLength * 0.4)), '#93c5fd');
+                        gradient.addColorStop(Math.max(0, Math.min(1, basePos + cycleLength * 0.5)), '#ffffff'); // 中心點為白色
+                        gradient.addColorStop(Math.max(0, Math.min(1, basePos + cycleLength * 0.6)), '#93c5fd');
+                        gradient.addColorStop(Math.max(0, Math.min(1, basePos + cycleLength * 0.7)), '#60a5fa');
+                        gradient.addColorStop(Math.max(0, Math.min(1, basePos + cycleLength * 0.8)), '#3b82f6');
+                        gradient.addColorStop(Math.max(0, Math.min(1, basePos + cycleLength * 0.9)), '#1a5fc9');
+                        gradient.addColorStop(Math.min(1, basePos + cycleLength), '#0047AB'); // 回到深藍，無縫循環
+                    }
+                }
+                
+                ctx.strokeStyle = gradient;
+                ctx.lineWidth = lineWidth;
+                ctx.lineCap = 'round';
+                ctx.globalAlpha = 1;
+                
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(lineLength, 0);
+                ctx.stroke();
+                
+                ctx.restore();
+                
+                // 繪製節點
+                // 節點 E
+                ctx.globalAlpha = 1;
+                ctx.fillStyle = '#ff85c0';
+                ctx.filter = 'drop-shadow(0 0 8px #ff85c0)';
+                ctx.beginPath();
+                ctx.arc(sourceX, sourceY, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.filter = 'none';
+                
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(labels[0], sourceX, sourceY);
+                
+                // 節點 Target
+                ctx.fillStyle = '#ff85c0';
+                ctx.filter = 'drop-shadow(0 0 8px #ff85c0)';
+                ctx.beginPath();
+                ctx.arc(targetX, targetY, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.filter = 'none';
+                
+                ctx.fillStyle = '#fff';
+                ctx.fillText(labels[1], targetX, targetY);
+                
+                // 更新偏移量
+                offset += speed;
+                if (offset >= gradientRepeatLength) {
+                    offset = 0;
+                }
+                
+                // 下一幀
+                requestAnimationFrame(animate);
+            }
+            
+            // 啟動動畫
+            animate();
+        }
+        
+        // 初始化 Canvas 動畫
+        drawFlowingConnection('canvas-ab', 100, 50, 700, 50, {
+            speed: 0.7,
+            lineWidth: 4,
+            glowWidth: 8,
+            gradientLength: 130,
+            pathType: 'straight',
+            label: ['A', 'B']
+        });
+        
+        drawFlowingConnection('canvas-cd', 100, 50, 700, 50, {
+            speed: 1.2,
+            lineWidth: 4,
+            glowWidth: 8,
+            gradientLength: 80,
+            pathType: 'straight',
+            label: ['C', 'D']
+        });
+        
+        drawFlowingConnection('canvas-ef', 100, 50, 700, 50, {
+            speed: 0.3,
+            lineWidth: 4,
+            glowWidth: 8,
+            gradientLength: 200,
+            pathType: 'straight',
+            label: ['E', 'F']
+        });
+        /**
+         * 通用函數：動態創建連接線動畫
+         * @param {string} svgId - SVG 元素的 ID
+         * @param {object} start - 起點座標 {x, y}
+         * @param {object} end - 終點座標 {x, y}
+         * @param {string} pathType - 路徑類型：'straight', 'curveUp', 'curveDown'
+         * @param {object} style - 動畫樣式配置
+         */
+        function createConnectionLine(svgId, start, end, pathType, style) {
+            const svg = document.getElementById(svgId);
+            
+            // 生成路徑字符串
+            let pathD;
+            const midX = (start.x + end.x) / 2;
+            
+            switch(pathType) {
+                case 'straight':
+                    pathD = `M ${start.x} ${start.y} L ${end.x} ${end.y}`;
+                    break;
+                case 'curveUp':
+                    const controlY_up = Math.min(start.y, end.y) - style.curveIntensity;
+                    pathD = `M ${start.x} ${start.y} Q ${midX} ${controlY_up} ${end.x} ${end.y}`;
+                    break;
+                case 'curveDown':
+                    const controlY_down = Math.max(start.y, end.y) + style.curveIntensity;
+                    pathD = `M ${start.x} ${start.y} Q ${midX} ${controlY_down} ${end.x} ${end.y}`;
+                    break;
+                default:
+                    pathD = `M ${start.x} ${start.y} L ${end.x} ${end.y}`;
+            }
+            
+            // 創建背景線
+            const bgLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            bgLine.setAttribute('class', 'bg-line');
+            bgLine.setAttribute('d', pathD);
+            svg.appendChild(bgLine);
+            
+            // 創建動畫線
+            const animLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            animLine.setAttribute('class', `${style.className} glow-filter`);
+            animLine.setAttribute('d', pathD);
+            svg.appendChild(animLine);
+            
+            // 創建節點
+            createNode(svg, start.x, start.y, style.startLabel);
+            createNode(svg, end.x, end.y, style.endLabel);
+        }
+        
+        /**
+         * 創建節點
+         */
+        function createNode(svg, x, y, label) {
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('class', 'node');
+            circle.setAttribute('cx', x);
+            circle.setAttribute('cy', y);
+            circle.setAttribute('r', 12);
+            svg.appendChild(circle);
+            
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('class', 'node-label');
+            text.setAttribute('x', x);
+            text.setAttribute('y', y + 5);
+            text.textContent = label;
+            svg.appendChild(text);
+        }
+        
+        // 使用範例（如需動態創建線條，可調用此函數）
+        /*
+        createConnectionLine('svg-custom', 
+            {x: 100, y: 50}, 
+            {x: 700, y: 50}, 
+            'straight',
+            {
+                className: 'line-ab',
+                curveIntensity: 90,
+                startLabel: 'A',
+                endLabel: 'B'
+            }
+        );
+        */
+    </script>
+</body>
+</html>
